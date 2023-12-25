@@ -6,11 +6,11 @@ import { App, Editor, MarkdownView, Modal, Notice, Plugin, PluginSettingTab, Set
 // Remember to rename these classes and interfaces!
 
 interface SupernotesPluginSettings {
-	mySetting: string;
+	apiKey: string;
 }
 
 const DEFAULT_SETTINGS: SupernotesPluginSettings = {
-	mySetting: 'default'
+	apiKey: 'default'
 }
 
 export default class SupernotesPlugin extends Plugin {
@@ -108,7 +108,7 @@ export default class SupernotesPlugin extends Plugin {
 		});
 
 		// This adds a settings tab so the user can configure various aspects of the plugin
-		this.addSettingTab(new SampleSettingTab(this.app, this));
+		this.addSettingTab(new SupernotesSettingTab(this.app, this));
 
 		// If the plugin hooks up any global DOM events (on parts of the app that doesn't belong to this plugin)
 		// Using this function will automatically remove the event listener when this plugin is disabled.
@@ -152,7 +152,7 @@ class SampleModal extends Modal {
 	}
 }
 
-class SampleSettingTab extends PluginSettingTab {
+class SupernotesSettingTab extends PluginSettingTab {
 	plugin: SupernotesPlugin;
 
 	constructor(app: App, plugin: SupernotesPlugin) {
@@ -166,13 +166,13 @@ class SampleSettingTab extends PluginSettingTab {
 		containerEl.empty();
 
 		new Setting(containerEl)
-			.setName('Setting #1')
-			.setDesc('It\'s a secret')
+			.setName('Supernotes API Key')
+			.setDesc('Key used for Obsidian to control Supernotes\' database')
 			.addText(text => text
-				.setPlaceholder('Enter your secret')
-				.setValue(this.plugin.settings.mySetting)
+				.setPlaceholder('Enter your API Key')
+				.setValue(this.plugin.settings.apiKey)
 				.onChange(async (value) => {
-					this.plugin.settings.mySetting = value;
+					this.plugin.settings.apiKey = value;
 					await this.plugin.saveSettings();
 				}));
 	}
