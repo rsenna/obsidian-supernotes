@@ -8,7 +8,7 @@ export interface SupernotesPluginSettings {
 }
 export const DEFAULT_SETTINGS: SupernotesPluginSettings = {
   apiKey: 'set API key here',
-  folder: '/'
+  folder: 'supernotes'
 };
 
 export class SupernotesSettingTab extends PluginSettingTab {
@@ -37,9 +37,9 @@ export class SupernotesSettingTab extends PluginSettingTab {
 
     new Setting(containerEl)
       .setName('Supernotes Folder')
-      .setDesc('Folder used for Supernotes download/sync')
+      .setDesc('Folder in your vault, used for Supernotes download/sync')
       .addText(text => text
-        .setPlaceholder('Enter your API Key')
+        .setPlaceholder('Enter Supernotes folder path')
         .setValue(this.plugin.settings.folder)
         .onChange(async (value) => {
           this.plugin.settings.folder = value;
