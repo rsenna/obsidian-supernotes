@@ -1,19 +1,19 @@
-import { App, Editor, MarkdownView, Modal, Notice, Plugin } from 'obsidian';
-import { DEFAULT_SETTINGS } from 'settings';
-import { SupernotesPluginSettings } from 'settings';
-import { SupernotesSettingTab } from 'settings';
+import {App, Editor, MarkdownView, Modal, Notice, Plugin} from 'obsidian';
+import {DEFAULT_SETTINGS, HasSettings, SupernotesPluginSettings, SupernotesSettingTab} from 'src/settings';
+import * as commands from './commands'
 
-export default class SupernotesPlugin extends Plugin {
+export default class SupernotesPlugin extends Plugin implements HasSettings {
   settings: SupernotesPluginSettings;
 
   async onload() {
     await this.loadSettings();
 
     // This creates an icon in the left ribbon.
-    const ribbonIconEl = this.addRibbonIcon('dice', 'Sample Plugin', (evt: MouseEvent) => {
+    const ribbonIconEl = this.addRibbonIcon('dice', 'Sample Plugin', (_evt: MouseEvent) => {
       // Called when the user clicks the icon.
       new Notice('This is a notice!');
     });
+
     // Perform additional things with the ribbon
     ribbonIconEl.addClass('my-plugin-ribbon-class');
 
@@ -34,7 +34,7 @@ export default class SupernotesPlugin extends Plugin {
     this.addCommand({
       id: 'sample-editor-command',
       name: 'Sample editor command',
-      editorCallback: (editor: Editor, view: MarkdownView) => {
+      editorCallback: (editor: Editor, _view: MarkdownView) => {
         console.log(editor.getSelection());
         editor.replaceSelection('Sample Editor Command');
       }
@@ -62,6 +62,15 @@ export default class SupernotesPlugin extends Plugin {
       }
     });
 
+    // Simple Command: Download notes
+    this.addCommand({
+      id: 'simple-download-notes',
+      name: 'Download notes',
+      callback: async () => {
+        await commands.downloadAll(this.app, this.settings)
+      }
+    });
+
     // This adds a settings tab so the user can configure various aspects of the plugin
     this.addSettingTab(new SupernotesSettingTab(this.app, this));
 
@@ -79,8 +88,8 @@ export default class SupernotesPlugin extends Plugin {
 
   }
 
-  async loadSettings() {
-    this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+  async loadSettings(): Promise<SupernotesPluginSettings> {
+    return this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
   }
 
   async saveSettings() {

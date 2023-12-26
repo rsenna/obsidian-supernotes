@@ -1,4 +1,4 @@
-import SupernotesPlugin from 'main';
+import SupernotesPlugin from 'src/main';
 
 import { PluginSettingTab, App, Setting } from "obsidian";
 
@@ -6,10 +6,16 @@ export interface SupernotesPluginSettings {
   apiKey: string;
   folder: string;
 }
+
 export const DEFAULT_SETTINGS: SupernotesPluginSettings = {
   apiKey: 'set API key here',
   folder: 'supernotes'
 };
+
+export interface HasSettings {
+  loadSettings(): Promise<SupernotesPluginSettings>
+  saveSettings(): Promise<void>
+}
 
 export class SupernotesSettingTab extends PluginSettingTab {
   plugin: SupernotesPlugin;

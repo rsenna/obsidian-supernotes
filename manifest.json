@@ -1,11 +1,11 @@
 {
-	"id": "obsidian-supernotes",
-	"name": "Supernotes",
-	"version": "0.0.1",
-	"minAppVersion": "1.4.10",
-	"description": "Supernotes integration for Obsidian.",
-	"author": "Rogério Senna",
-	"authorUrl": "https://obsidian.md",
-	"fundingUrl": "https://obsidian.md/pricing",
-	"isDesktopOnly": false
+  "id": "obsidian-supernotes",
+  "name": "Supernotes",
+  "version": "0.0.1",
+  "minAppVersion": "1.4.10",
+  "description": "Supernotes integration for Obsidian.",
+  "author": "Rogério Senna",
+  "authorUrl": "https://obsidian.md",
+  "fundingUrl": "https://obsidian.md/pricing",
+  "isDesktopOnly": false
 }
