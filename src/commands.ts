@@ -1,13 +1,14 @@
 import {SupernotesPluginSettings} from "./settings";
 import {createNoteInFolder} from "./create-note";
 import {App, Notice, requestUrl, RequestUrlParam, RequestUrlResponse} from "obsidian";
+import {isObject} from "./utils";
 
 export const downloadAll = async (app: App, settings: SupernotesPluginSettings) => {
   const requestUrlParams: RequestUrlParam = {
     url: 'https://api.supernotes.app/v1/cards/get/select',
     method: 'POST',
     headers: {
-      'Api-Key': 'VSPTEr4dPN7LSH2PpkTf4aN7ujksb-4ovKKT6bqNzKs',
+      'Api-Key': settings.apiKey,
       'Content-Type': 'application/json'
     },
     body: '{"limit":10,"sort_type":2}'
@@ -32,6 +33,8 @@ export const downloadAll = async (app: App, settings: SupernotesPluginSettings) 
   const separator = '-'
   const snDataMarkup = 'sn-data-markup';
   const snDataHtml = 'sn-data-html';
+  // const snDataCreatedWhen = 'sn-data-created_when'
+  // const snDataModifiedWhen = 'sn-data-modified_when'
   const ignoredKeys = [snDataMarkup, snDataHtml]
 
   const setFrontmatter = (prefix: string, entry: any, frontmatter: any) => {
@@ -43,7 +46,8 @@ export const downloadAll = async (app: App, settings: SupernotesPluginSettings) 
         continue;
       }
 
-      if (typeof item === 'object') {
+      if (isObject(item)) {
+        console.log(prefixedKey, 'is a object')
         setFrontmatter(prefixedKey, item, frontmatter)
       } else {
         frontmatter[prefixedKey] = item
@@ -52,12 +56,12 @@ export const downloadAll = async (app: App, settings: SupernotesPluginSettings) 
   }
 
   for (const entry of entries) {
-    console.log('id', entry.data.id)
-    console.log('data', entry.data)
-
     const noteFile = await createNoteInFolder(app, settings, entry.data.id)
     await app.fileManager.processFrontMatter(noteFile, frontmatter => {
       setFrontmatter(basePrefix, entry, frontmatter)
+
+      frontmatter['created'] = entry.data.created_when
+      frontmatter['updated'] = entry.data.modified_when
     })
 
     await app.vault.append(noteFile, entry.data.html)

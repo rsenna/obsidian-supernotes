@@ -7,6 +7,9 @@ export function validateDate(date: string) {
   return moment(moment().format(date), date, true).isValid();
 }
 
+export const isObject = (o: any) =>
+  o instanceof Object && o.constructor === Object
+
 export function isTemplaterNeeded(app: App, settings: FolderSettings) {
   //@ts-ignore
   return app.plugins.enabledPlugins.has("templater-obsidian") && settings.templater;
