@@ -3,7 +3,13 @@ import {createNoteInFolder} from "./create-note";
 import {App, Notice, requestUrl, RequestUrlParam, RequestUrlResponse} from "obsidian";
 import {isObject} from "./utils";
 
-export const downloadAll = async (app: App, settings: SupernotesPluginSettings) => {
+export const downloadAll = async (
+    app: App,
+    settings: SupernotesPluginSettings,
+    statusBarItem: HTMLElement) => {
+
+  statusBarItem.setText('Download started...')
+
   const requestUrlParams: RequestUrlParam = {
     url: 'https://api.supernotes.app/v1/cards/get/select',
     method: 'POST',
@@ -11,7 +17,7 @@ export const downloadAll = async (app: App, settings: SupernotesPluginSettings) 
       'Api-Key': settings.apiKey,
       'Content-Type': 'application/json'
     },
-    body: '{"limit":10,"sort_type":2}'
+    body: '{"sort_type":2}'
   }
 
   const response: RequestUrlResponse = await requestUrl(requestUrlParams)
@@ -20,8 +26,6 @@ export const downloadAll = async (app: App, settings: SupernotesPluginSettings) 
     new Notice(`Error (${response.status}): ${response.text}.`)
     return;
   }
-
-  console.log(response.json)
 
   const responseJson = response.json
   const entries: any[] = Object.values(responseJson)
@@ -57,6 +61,7 @@ export const downloadAll = async (app: App, settings: SupernotesPluginSettings) 
 
   for (const entry of entries) {
     const noteFile = await createNoteInFolder(app, settings, entry.data.id)
+
     await app.fileManager.processFrontMatter(noteFile, frontmatter => {
       setFrontmatter(basePrefix, entry, frontmatter)
 
@@ -66,6 +71,8 @@ export const downloadAll = async (app: App, settings: SupernotesPluginSettings) 
 
     await app.vault.append(noteFile, entry.data.html)
   }
+
+  statusBarItem.setText('Download complete.')
 }
 
 // for (const dataKey in data) {

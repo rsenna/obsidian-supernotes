@@ -65,7 +65,7 @@ function getLinkParts(path: string, app: App): {
   };
 }
 
-function getOpening(app: App, param = DefaultOpening.newTab, split = SplitDirection.vertical) {
+function getOpening(app: App, param = DefaultOpening.nothing, split = SplitDirection.vertical) {
   switch (param) {
     case DefaultOpening.split:
       return app.workspace.getLeaf("split", split);
@@ -100,8 +100,6 @@ export async function createNoteInFolder(app: App, settings: SupernotesPluginSet
     await app.vault.createFolder(folder)
     console.log('created folder')
   }
-
-  console.log('folder', folder)
 
   const createdFilePath = `${folder}/${fileName}${fileName.endsWith('.md') ? '' : '.md'}`
   const file = app.vault.getAbstractFileByPath(createdFilePath) as TFile
