@@ -1,19 +1,26 @@
 // From https://github.com/Lisandra-dev/obsidian-create-note-in-folder/blob/master/src/utils/utils.ts
 
-import {App, moment} from "obsidian";
-import {CustomVariables, FolderSettings} from "./interface"; // TODO: remove import
+// TODO: remove dependency on CustomVariables
 
-export function validateDate(date: string) {
-  return moment(moment().format(date), date, true).isValid();
-}
+import {CustomVariables} from "./interface"
+import {DateTime} from "luxon"
+import {moment} from "obsidian"
+
+// TODO: remove hardcoded UTC offset
+const timestampFormat = 'YYYY-MM-DD[T]HH:mm:ss'
+const timestampFormatOffset = (utcOffset: string): string =>
+  timestampFormat + utcOffset
+
+// TODO use Luxon?
+// TODO offset should not be coupled to ISO format nor moment/luxon; maybe use a number instead of a string?
+export const formatDate = (date: string, utcOffset?: string): string =>
+  moment(date).format(utcOffset ? timestampFormatOffset(utcOffset) : timestampFormat)
 
 export const isObject = (o: any) =>
   o instanceof Object && o.constructor === Object
 
-export function isTemplaterNeeded(app: App, settings: FolderSettings) {
-  //@ts-ignore
-  return app.plugins.enabledPlugins.has("templater-obsidian") && settings.templater;
-}
+export const isValidDate = (date: string): boolean =>
+  DateTime.fromISO(date).isValid
 
 export function replaceVariables(filePath: string, customVariables: CustomVariables[]) {
   const hasBeenReplaced: boolean[] = [];

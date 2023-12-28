@@ -1,7 +1,7 @@
 import {SupernotesPluginSettings} from "./settings";
 import {createNoteInFolder} from "./create-note";
 import {App, Notice, requestUrl, RequestUrlParam, RequestUrlResponse} from "obsidian";
-import {isObject} from "./utils";
+import {formatDate, isObject, isValidDate} from "./utils";
 
 export const downloadAll = async (
     app: App,
@@ -20,59 +20,68 @@ export const downloadAll = async (
     body: '{"sort_type":2}'
   }
 
-  const response: RequestUrlResponse = await requestUrl(requestUrlParams)
+  try {
+    const response: RequestUrlResponse = await requestUrl(requestUrlParams)
 
-  if (response.status != 200) {
-    new Notice(`Error (${response.status}): ${response.text}.`)
-    return;
-  }
+    if (response.status != 200) {
+      new Notice(`Error (${response.status}): ${response.text}.`)
+      return;
+    }
 
-  const responseJson = response.json
-  const entries: any[] = Object.values(responseJson)
+    const responseJson = response.json
+    const entries: any[] = Object.values(responseJson)
 
-  // Avoiding nested yaml properties because of
-  // https://forum.obsidian.md/t/properties-support-multi-level-yaml-nested-attributes/63826
+    // Avoiding nested yaml properties because of
+    // https://forum.obsidian.md/t/properties-support-multi-level-yaml-nested-attributes/63826
 
-  const basePrefix = 'sn'
-  const separator = '-'
-  const snDataMarkup = 'sn-data-markup';
-  const snDataHtml = 'sn-data-html';
-  // const snDataCreatedWhen = 'sn-data-created_when'
-  // const snDataModifiedWhen = 'sn-data-modified_when'
-  const ignoredKeys = [snDataMarkup, snDataHtml]
+    const basePrefix = 'sn'
+    const separator = '-'
+    const snDataMarkup = 'sn-data-markup';
+    const snDataHtml = 'sn-data-html';
+    // const snDataCreatedWhen = 'sn-data-created_when'
+    // const snDataModifiedWhen = 'sn-data-modified_when'
+    const ignoredKeys = [snDataMarkup, snDataHtml]
 
-  const setFrontmatter = (prefix: string, entry: any, frontmatter: any) => {
-    for (const key in entry) {
-      const item = entry[key]
-      const prefixedKey = prefix + separator + key
+    // TODO: read UTC offset from settings
+    const fd = (it: any): string => formatDate(it, '[+]01:00')
 
-      if (ignoredKeys.contains(prefixedKey)) {
-        continue;
-      }
+    const setFrontmatter = (prefix: string, entry: any, frontmatter: any) => {
+      for (const key in entry) {
+        const item = entry[key]
+        const prefixedKey = prefix + separator + key
 
-      if (isObject(item)) {
-        console.log(prefixedKey, 'is a object')
-        setFrontmatter(prefixedKey, item, frontmatter)
-      } else {
-        frontmatter[prefixedKey] = item
+        if (ignoredKeys.contains(prefixedKey)) {
+          continue;
+        }
+
+        if (isObject(item)) {
+          console.log(prefixedKey, 'is a object')
+          setFrontmatter(prefixedKey, item, frontmatter)
+        } else if (isValidDate(item)) {
+          frontmatter[prefixedKey] = fd(item)
+        } else {
+          frontmatter[prefixedKey] = item
+        }
       }
     }
+
+    for (const entry of entries) {
+      const noteFile = await createNoteInFolder(app, settings, entry.data.id)
+
+      await app.fileManager.processFrontMatter(noteFile, frontmatter => {
+        setFrontmatter(basePrefix, entry, frontmatter)
+
+        frontmatter['created'] = fd(entry.data.created_when)
+        frontmatter['updated'] = fd(entry.data.modified_when)
+      })
+
+      await app.vault.append(noteFile, entry.data.html)
+    }
+  } catch (ex) {
+    new Notice(ex) // TODO: Is this Notice being shown? I don't think so...
+  } finally {
+    statusBarItem.setText('Download complete.')
   }
-
-  for (const entry of entries) {
-    const noteFile = await createNoteInFolder(app, settings, entry.data.id)
-
-    await app.fileManager.processFrontMatter(noteFile, frontmatter => {
-      setFrontmatter(basePrefix, entry, frontmatter)
-
-      frontmatter['created'] = entry.data.created_when
-      frontmatter['updated'] = entry.data.modified_when
-    })
-
-    await app.vault.append(noteFile, entry.data.html)
-  }
-
-  statusBarItem.setText('Download complete.')
 }
 
 // for (const dataKey in data) {
