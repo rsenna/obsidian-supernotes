@@ -1,7 +1,7 @@
 {
   "id": "obsidian-supernotes",
   "name": "Supernotes",
-  "version": "0.0.1",
+  "version": "0.0.4",
   "minAppVersion": "1.4.10",
   "description": "Supernotes integration for Obsidian.",
   "author": "Rogério Senna",

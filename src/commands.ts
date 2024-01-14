@@ -1,12 +1,33 @@
 import {SupernotesPluginSettings} from "./settings";
-import {createNoteInFolder} from "./create-note";
+import {createNoteForEntry, getNoteInFolder} from "./note";
 import {App, Notice, requestUrl, RequestUrlParam, RequestUrlResponse} from "obsidian";
-import {formatDate, isObject, isValidDate} from "./utils";
+import {asDate, formatDate, getEnumValues, isAnyOf, isObject, isValidDateString} from "./utils";
+import {DownloadConflict, DownloadConflictResult} from "./modals/DownloadConflict";
+import {Entry, SupernotesStatus} from "./types";
+
+const getRequestUrlParamsBody = (includeJunk: boolean) => {
+  const query: string[] = []
+
+  query.push('{')
+  query.push('"sort_type":2,')
+  query.push('"include_membership_statuses": [')
+  query.push(
+    getEnumValues(SupernotesStatus)
+      .filter(it => includeJunk || it !== SupernotesStatus.JUNKED)
+      .filter(it => it)
+      .join(','))
+  query.push(']}')
+
+  console.log(query)
+
+  return query.join('')
+}
 
 export const downloadAll = async (
-    app: App,
-    settings: SupernotesPluginSettings,
-    statusBarItem: HTMLElement) => {
+  app: App,
+  settings: SupernotesPluginSettings,
+  statusBarItem: HTMLElement
+) => {
 
   statusBarItem.setText('Download started...')
 
@@ -17,8 +38,10 @@ export const downloadAll = async (
       'Api-Key': settings.apiKey,
       'Content-Type': 'application/json'
     },
-    body: '{"sort_type":2}'
+    body: getRequestUrlParamsBody(settings.isJunkEnabled)
   }
+
+  let entryCount = 0
 
   try {
     const response: RequestUrlResponse = await requestUrl(requestUrlParams)
@@ -28,8 +51,13 @@ export const downloadAll = async (
       return;
     }
 
+    console.debug('response.status', response.status)
+
     const responseJson = response.json
-    const entries: any[] = Object.values(responseJson)
+    const entries: Entry[] = Object.values(responseJson)
+
+    console.debug('entries.length', entries.length)
+    entryCount = entries.length
 
     // Avoiding nested yaml properties because of
     // https://forum.obsidian.md/t/properties-support-multi-level-yaml-nested-attributes/63826
@@ -42,11 +70,9 @@ export const downloadAll = async (
     // const snDataModifiedWhen = 'sn-data-modified_when'
     const ignoredKeys = [snDataMarkup, snDataHtml]
 
-    // TODO: read UTC offset from settings
-    const fd = (it: any): string => formatDate(it, '[+]01:00')
-
-    const setFrontmatter = (prefix: string, entry: any, frontmatter: any) => {
+    const setFrontmatter = (prefix: string, entry: Entry, frontmatter: any) => {
       for (const key in entry) {
+        // @ts-ignore
         const item = entry[key]
         const prefixedKey = prefix + separator + key
 
@@ -55,82 +81,56 @@ export const downloadAll = async (
         }
 
         if (isObject(item)) {
-          console.log(prefixedKey, 'is a object')
           setFrontmatter(prefixedKey, item, frontmatter)
-        } else if (isValidDate(item)) {
-          frontmatter[prefixedKey] = fd(item)
+        } else if (isValidDateString(item)) {
+          frontmatter[prefixedKey] = formatDate(item)
         } else {
           frontmatter[prefixedKey] = item
         }
       }
     }
 
+    let action: DownloadConflictResult | null = null
+
     for (const entry of entries) {
-      const noteFile = await createNoteInFolder(app, settings, entry.data.id)
+      const existingNoteFile = await getNoteInFolder(app, settings, entry)
 
-      await app.fileManager.processFrontMatter(noteFile, frontmatter => {
-        setFrontmatter(basePrefix, entry, frontmatter)
+      if (!action && existingNoteFile) {
+        await app.fileManager.processFrontMatter(existingNoteFile, frontmatter => {
+          const modal = new DownloadConflict(app, {
+            filename: existingNoteFile.path,
+            localCreatedTimestamp: frontmatter['created'],
+            remoteCreatedTimestamp: asDate(entry.data.created_when),
+            localUpdatedTimestamp: frontmatter['updated'],
+            remoteUpdatedTimestamp: asDate(entry.data.modified_when)
+          })
+          modal.open()
+          action = modal.result
+        })
+      }
 
-        frontmatter['created'] = fd(entry.data.created_when)
-        frontmatter['updated'] = fd(entry.data.modified_when)
-      })
+      if (isAnyOf(action, null, DownloadConflictResult.Overwrite, DownloadConflictResult.OverwriteAll)) {
+        const noteFile = await createNoteForEntry(app, settings, entry)
 
-      await app.vault.append(noteFile, entry.data.html)
+        await app.fileManager.processFrontMatter(noteFile, frontmatter => {
+          setFrontmatter(basePrefix, entry, frontmatter)
+
+          frontmatter['created'] = formatDate(entry.data.created_when)
+          frontmatter['updated'] = formatDate(entry.data.modified_when)
+        })
+
+        await app.vault.append(noteFile, entry.data.html)
+      }
+
+      // Ignore and Overwrite only valid for current file:
+      if (isAnyOf(action, DownloadConflictResult.Ignore, DownloadConflictResult.Overwrite)) {
+        action = null
+      }
     }
   } catch (ex) {
-    new Notice(ex) // TODO: Is this Notice being shown? I don't think so...
+    console.error('ERROR ' + ex)
+    new Notice(ex)
   } finally {
-    statusBarItem.setText('Download complete.')
+    statusBarItem.setText(`Download complete (total = ${entryCount}).`)
   }
 }
-
-// for (const dataKey in data) {
-//   frontmatter[`sn-data-${dataKey}`] = data[dataKey]
-// }
-
-// 'backlinks'
-// 'data'
-//   'color'
-//   'comment_count'
-//   'created_when'
-//   'html'
-//   'icon'
-//   'id'
-//   'likes'
-//   'markup'
-//   'member_count'
-//   'meta'
-//   'modified_by_id'
-//   'modified_when'
-//   'name'
-//   'owner_id'
-//   'public_child_count'
-//   'synced_when'
-//   'tags'
-//   'targeted_when'
-//   'ydoc'
-//
-// 'membership'
-//   'auto_publish_children'
-//   'created_when'
-//   'enrolled_when'
-//   'id'
-//   'liked'
-//   'modified_when'
-//   'opened_when'
-//   'perms'
-//   'personal_color'
-//   'personal_tags'
-//   'status'
-//   'total_child_count'
-//   'via_id'
-//   'via_type'
-//   'view'
-//     'display_type'
-//     'sort_ascending'
-//     'sort_type'
-//   },
-//   'visibility'
-//
-// 'parents'
-
