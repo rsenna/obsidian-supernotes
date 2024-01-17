@@ -29,7 +29,7 @@ export class SupernotesSettingTab extends PluginSettingTab {
     this.plugin = plugin
   }
 
-  display(): void {
+  async display(): Promise<void> {
     const { containerEl } = this
 
     containerEl.empty()
@@ -56,29 +56,36 @@ export class SupernotesSettingTab extends PluginSettingTab {
           await this.plugin.saveSettings();
         }))
 
+    const updateJunkFolder = (value: boolean) => {
+      if (value) {
+        new Setting(containerEl)
+          .setClass('txt-junk-folder')
+          .setName('Junk Folder')
+          .setDesc('Folder to be used when downloading junk notes from Supernotes')
+          .addText(it => it
+            .setPlaceholder('Enter Supernotes Junk folder path')
+            .setValue(this.plugin.settings.junkFolder)
+            .onChange(async (value: string): Promise<string> =>
+              this.plugin.settings.junkFolder = value
+            )
+          )
+      } else {
+        containerEl.find('.txt-junk-folder').remove()
+      }
+    }
+
     new Setting(containerEl)
       .setName('Download Junk')
       .setDesc('If we should download your deleted/junk notes from Supernotes')
       .addToggle(it => it
         .setValue(this.plugin.settings.isJunkEnabled)
         .onChange(async (value: boolean): Promise<void> => {
-          if (value) {
-            new Setting(containerEl)
-              .setClass('txt-junk-folder')
-              .setName('Junk Folder')
-              .setDesc('Folder to be used when downloading junk notes from Supernotes')
-              .addText(it => it
-                .setPlaceholder('Enter Supernotes Junk folder path')
-                .setValue(this.plugin.settings.junkFolder)
-                .onChange(async (value: string): Promise<string> =>
-                  this.plugin.settings.junkFolder = value))
-
-          } else {
-            containerEl.find('.txt-junk-folder').remove()
-          }
-
           this.plugin.settings.isJunkEnabled = value
           await this.plugin.saveSettings()
-        }))
+          updateJunkFolder(value)
+        })
+      )
+
+    updateJunkFolder(this.plugin.settings.isJunkEnabled)
   }
 }
