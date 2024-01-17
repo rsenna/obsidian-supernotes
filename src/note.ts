@@ -108,8 +108,8 @@ function getLinkParts(path: string, app: App): Parts {
 }
 
 export const getNoteFolder = (settings: SupernotesPluginSettings, entry: Entry): string => {
-  const junk = settings.isJunkEnabled && entry.membership.status === SupernotesStatus.JUNKED
-  return normalizePath(junk ? settings.junkFolder : settings.folder)
+  const junk = settings.junk.enabled && entry.membership.status === SupernotesStatus.JUNKED
+  return normalizePath(junk ? settings.junk.folder : settings.basic.folder)
 }
 
 export async function getNoteInFolder(app: App, settings: SupernotesPluginSettings, entry: Entry): Promise<TFile> {

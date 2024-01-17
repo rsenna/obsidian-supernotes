@@ -35,10 +35,10 @@ export const downloadAll = async (
     url: 'https://api.supernotes.app/v1/cards/get/select',
     method: 'POST',
     headers: {
-      'Api-Key': settings.apiKey,
+      'Api-Key': settings.basic.apiKey,
       'Content-Type': 'application/json'
     },
-    body: getRequestUrlParamsBody(settings.isJunkEnabled)
+    body: getRequestUrlParamsBody(settings.junk.enabled)
   }
 
   let entryCount = 0
