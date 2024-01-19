@@ -1,8 +1,7 @@
-import {SupernotesPluginSettings} from "./settings";
+import {SupernotesPluginSettings, SyncOptions} from "./settings";
 import {createNoteForEntry, getNoteInFolder} from "./note";
-import {App, Notice, requestUrl, RequestUrlParam, RequestUrlResponse} from "obsidian";
-import {asDate, formatDate, getEnumValues, isAnyOf, isObject, isValidDateString} from "./utils";
-import {DownloadConflict, DownloadConflictResult} from "./modals/DownloadConflict";
+import {App, moment, Notice, requestUrl, RequestUrlParam, RequestUrlResponse, TFile} from "obsidian";
+import {formatDate, getEnumValues, isObject, isValidDateString} from "./utils";
 import {Entry, SupernotesStatus} from "./types";
 
 const getRequestUrlParamsBody = (includeJunk: boolean) => {
@@ -18,18 +17,15 @@ const getRequestUrlParamsBody = (includeJunk: boolean) => {
       .join(','))
   query.push(']}')
 
-  console.log(query)
-
   return query.join('')
 }
 
 export const downloadAll = async (
   app: App,
   settings: SupernotesPluginSettings,
-  statusBarItem: HTMLElement
+  statusBarEl: HTMLElement
 ) => {
-
-  statusBarItem.setText('Download started...')
+  statusBarEl.setText('Download started...')
 
   const requestUrlParams: RequestUrlParam = {
     url: 'https://api.supernotes.app/v1/cards/get/select',
@@ -54,10 +50,10 @@ export const downloadAll = async (
     console.debug('response.status', response.status)
 
     const responseJson = response.json
-    const entries: Entry[] = Object.values(responseJson)
+    const responseEntries: Entry[] = Object.values(responseJson)
 
-    console.debug('entries.length', entries.length)
-    entryCount = entries.length
+    console.debug('responseEntries.length', responseEntries.length)
+    entryCount = responseEntries.length
 
     // Avoiding nested yaml properties because of
     // https://forum.obsidian.md/t/properties-support-multi-level-yaml-nested-attributes/63826
@@ -66,8 +62,6 @@ export const downloadAll = async (
     const separator = '-'
     const snDataMarkup = 'sn-data-markup';
     const snDataHtml = 'sn-data-html';
-    // const snDataCreatedWhen = 'sn-data-created_when'
-    // const snDataModifiedWhen = 'sn-data-modified_when'
     const ignoredKeys = [snDataMarkup, snDataHtml]
 
     const setFrontmatter = (prefix: string, entry: Entry, frontmatter: any) => {
@@ -90,47 +84,67 @@ export const downloadAll = async (
       }
     }
 
-    let action: DownloadConflictResult | null = null
+    const getExistingNoteMtime = async (file: TFile) => {
+      let result: any
+      await app.fileManager.processFrontMatter(file, f => result = f['updated'])
+      return moment(result).unix()
+    }
 
-    for (const entry of entries) {
-      const existingNoteFile = await getNoteInFolder(app, settings, entry)
+    for (const responseEntry of responseEntries) {
+      const existingNoteFile = await getNoteInFolder(app, settings, responseEntry)
+      const existingUnixTime = await getExistingNoteMtime(existingNoteFile)
+      const responseUnixTime = moment(responseEntry.data.modified_when).unix()
 
-      if (!action && existingNoteFile) {
-        await app.fileManager.processFrontMatter(existingNoteFile, frontmatter => {
-          const modal = new DownloadConflict(app, {
-            filename: existingNoteFile.path,
-            localCreatedTimestamp: frontmatter['created'],
-            remoteCreatedTimestamp: asDate(entry.data.created_when),
-            localUpdatedTimestamp: frontmatter['updated'],
-            remoteUpdatedTimestamp: asDate(entry.data.modified_when)
-          })
-          modal.open()
-          action = modal.result
-        })
+      const download =
+        !existingNoteFile ||
+        (settings.syncRules.download === SyncOptions.Always) ||
+        (settings.syncRules.download === SyncOptions.ByTimestamp && responseUnixTime > existingUnixTime)
+
+      // For debugging timestamps:
+      if (download) {
+        console.debug('-')
+        console.debug(responseEntry.data.id)
+        console.debug(responseEntry.data.name)
+        console.debug(existingUnixTime)
+        console.debug(responseUnixTime)
+        console.debug(responseEntry.data.modified_when)
+        console.debug('---')
       }
 
-      if (isAnyOf(action, null, DownloadConflictResult.Overwrite, DownloadConflictResult.OverwriteAll)) {
-        const noteFile = await createNoteForEntry(app, settings, entry)
+      if (download) {
+        const noteFile = existingNoteFile || await createNoteForEntry(app, settings, responseEntry)
 
         await app.fileManager.processFrontMatter(noteFile, frontmatter => {
-          setFrontmatter(basePrefix, entry, frontmatter)
+          setFrontmatter(basePrefix, responseEntry, frontmatter)
 
-          frontmatter['created'] = formatDate(entry.data.created_when)
-          frontmatter['updated'] = formatDate(entry.data.modified_when)
+          frontmatter['created'] = formatDate(responseEntry.data.created_when)
+          frontmatter['updated'] = formatDate(responseEntry.data.modified_when)
         })
 
-        await app.vault.append(noteFile, entry.data.html)
-      }
-
-      // Ignore and Overwrite only valid for current file:
-      if (isAnyOf(action, DownloadConflictResult.Ignore, DownloadConflictResult.Overwrite)) {
-        action = null
+        await app.vault.append(noteFile, responseEntry.data.html)
       }
     }
   } catch (ex) {
     console.error('ERROR ' + ex)
     new Notice(ex)
   } finally {
-    statusBarItem.setText(`Download complete (total = ${entryCount}).`)
+    statusBarEl.setText(`Download complete (total = ${entryCount}).`)
   }
+}
+
+export const uploadAll = async (
+  app: App,
+  settings: SupernotesPluginSettings,
+  statusBarItem: HTMLElement
+) => {
+  // TODO
+}
+
+export const synchronizeAll = async (
+  app: App,
+  settings: SupernotesPluginSettings,
+  statusBarItem: HTMLElement
+) => {
+  await downloadAll(app, settings, statusBarItem)
+  await uploadAll(app, settings, statusBarItem)
 }

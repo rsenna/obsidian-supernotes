@@ -16,6 +16,7 @@ export interface IDownloadConflictParams {
   remoteUpdatedTimestamp?: Date
 }
 
+// TODO: Currently unused
 export class DownloadConflict extends Modal {
   private _result: DownloadConflictResult | null = null
 
