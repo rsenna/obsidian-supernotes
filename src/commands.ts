@@ -27,6 +27,12 @@ export const downloadAll = async (
 ) => {
   statusBarEl.setText('Download started...')
 
+  const basePrefix = 'sn'
+  const separator = '-'
+  const snDataMarkup = 'sn-data-markup';
+  const snDataHtml = 'sn-data-html';
+  const ignoredKeys = [snDataMarkup, snDataHtml]
+
   const requestUrlParams: RequestUrlParam = {
     url: 'https://api.supernotes.app/v1/cards/get/select',
     method: 'POST',
@@ -35,6 +41,35 @@ export const downloadAll = async (
       'Content-Type': 'application/json'
     },
     body: getRequestUrlParamsBody(settings.junk.enabled)
+  }
+
+  const getExistingNoteMtime = async (file: TFile) => {
+    let result: any
+    await app.fileManager.processFrontMatter(file, f => result = f['updated'])
+    return moment(result).unix()
+  }
+
+  const setFrontmatter = (prefix: string, entry: Entry, frontmatter: any) => {
+    // Avoiding nested yaml properties because of
+    // https://forum.obsidian.md/t/properties-support-multi-level-yaml-nested-attributes/63826
+
+    for (const key in entry) {
+      // @ts-ignore
+      const item = entry[key]
+      const prefixedKey = prefix + separator + key
+
+      if (ignoredKeys.contains(prefixedKey)) {
+        continue;
+      }
+
+      if (isObject(item)) {
+        setFrontmatter(prefixedKey, item, frontmatter)
+      } else if (isValidDateString(item)) {
+        frontmatter[prefixedKey] = formatDate(item)
+      } else {
+        frontmatter[prefixedKey] = item
+      }
+    }
   }
 
   let entryCount = 0
@@ -55,41 +90,6 @@ export const downloadAll = async (
     console.debug('responseEntries.length', responseEntries.length)
     entryCount = responseEntries.length
 
-    // Avoiding nested yaml properties because of
-    // https://forum.obsidian.md/t/properties-support-multi-level-yaml-nested-attributes/63826
-
-    const basePrefix = 'sn'
-    const separator = '-'
-    const snDataMarkup = 'sn-data-markup';
-    const snDataHtml = 'sn-data-html';
-    const ignoredKeys = [snDataMarkup, snDataHtml]
-
-    const setFrontmatter = (prefix: string, entry: Entry, frontmatter: any) => {
-      for (const key in entry) {
-        // @ts-ignore
-        const item = entry[key]
-        const prefixedKey = prefix + separator + key
-
-        if (ignoredKeys.contains(prefixedKey)) {
-          continue;
-        }
-
-        if (isObject(item)) {
-          setFrontmatter(prefixedKey, item, frontmatter)
-        } else if (isValidDateString(item)) {
-          frontmatter[prefixedKey] = formatDate(item)
-        } else {
-          frontmatter[prefixedKey] = item
-        }
-      }
-    }
-
-    const getExistingNoteMtime = async (file: TFile) => {
-      let result: any
-      await app.fileManager.processFrontMatter(file, f => result = f['updated'])
-      return moment(result).unix()
-    }
-
     for (const responseEntry of responseEntries) {
       const existingNoteFile = await getNoteInFolder(app, settings, responseEntry)
       const existingUnixTime = await getExistingNoteMtime(existingNoteFile)
@@ -99,17 +99,6 @@ export const downloadAll = async (
         !existingNoteFile ||
         (settings.syncRules.download === SyncOptions.Always) ||
         (settings.syncRules.download === SyncOptions.ByTimestamp && responseUnixTime > existingUnixTime)
-
-      // For debugging timestamps:
-      if (download) {
-        console.debug('-')
-        console.debug(responseEntry.data.id)
-        console.debug(responseEntry.data.name)
-        console.debug(existingUnixTime)
-        console.debug(responseUnixTime)
-        console.debug(responseEntry.data.modified_when)
-        console.debug('---')
-      }
 
       if (download) {
         const noteFile = existingNoteFile || await createNoteForEntry(app, settings, responseEntry)
@@ -135,7 +124,8 @@ export const downloadAll = async (
 export const uploadAll = async (
   app: App,
   settings: SupernotesPluginSettings,
-  statusBarItem: HTMLElement
+  statusBarItem: HTMLElement,
+  ignore: number[]
 ) => {
   // TODO
 }
@@ -146,5 +136,5 @@ export const synchronizeAll = async (
   statusBarItem: HTMLElement
 ) => {
   await downloadAll(app, settings, statusBarItem)
-  await uploadAll(app, settings, statusBarItem)
+  await uploadAll(app, settings, statusBarItem, [])
 }

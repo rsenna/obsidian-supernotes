@@ -12,7 +12,7 @@ export const createNoteForEntry = async (
   settings: SupernotesPluginSettings,
   entry: Entry
 ): Promise<TFile> => {
-  const createdFilePath = getNotePath2(settings, entry)
+  const createdFilePath = getNotePath(settings, entry)
   const folder = path.dirname(createdFilePath)
   const fileName = path.basename(createdFilePath)
 
@@ -113,11 +113,11 @@ export const getNoteFolder = (settings: SupernotesPluginSettings, entry: Entry):
 }
 
 export async function getNoteInFolder(app: App, settings: SupernotesPluginSettings, entry: Entry): Promise<TFile> {
-  const filePath = getNotePath2(settings, entry)
+  const filePath = getNotePath(settings, entry)
   return app.vault.getAbstractFileByPath(filePath) as TFile
 }
 
-export const getNotePath2 = (settings: SupernotesPluginSettings, entry: Entry): string => {
+export const getNotePath = (settings: SupernotesPluginSettings, entry: Entry): string => {
   const folder = getNoteFolder(settings, entry)
 
   // TODO: name should be decided based on settings
