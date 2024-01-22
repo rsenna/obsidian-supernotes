@@ -4,15 +4,15 @@ import {App, getLinkpath, MarkdownView, normalizePath, OpenViewState, TFile, Wor
 import {DefaultOpening, SplitDirection} from "src/interface";
 
 import {SupernotesPluginSettings} from "./settings";
-import {Entry, SupernotesStatus} from "./types";
+import {SupernotesCard, SupernotesStatus} from "./types";
 import * as path from "path";
 
 export const createNoteForEntry = async (
   app: App,
   settings: SupernotesPluginSettings,
-  entry: Entry
+  card: SupernotesCard
 ): Promise<TFile> => {
-  const createdFilePath = getNotePath(settings, entry)
+  const createdFilePath = getNotePath(settings, card)
   const folder = path.dirname(createdFilePath)
   const fileName = path.basename(createdFilePath)
 
@@ -107,21 +107,21 @@ function getLinkParts(path: string, app: App): Parts {
   } as Parts
 }
 
-export const getNoteFolder = (settings: SupernotesPluginSettings, entry: Entry): string => {
-  const junk = settings.junk.enabled && entry.membership.status === SupernotesStatus.JUNKED
+export const getNoteFolder = (settings: SupernotesPluginSettings, card: SupernotesCard): string => {
+  const junk = settings.junk.enabled && card.membership.status === SupernotesStatus.JUNKED
   return normalizePath(junk ? settings.junk.folder : settings.basic.folder)
 }
 
-export async function getNoteInFolder(app: App, settings: SupernotesPluginSettings, entry: Entry): Promise<TFile> {
-  const filePath = getNotePath(settings, entry)
+export async function getNoteInFolder(app: App, settings: SupernotesPluginSettings, card: SupernotesCard): Promise<TFile> {
+  const filePath = getNotePath(settings, card)
   return app.vault.getAbstractFileByPath(filePath) as TFile
 }
 
-export const getNotePath = (settings: SupernotesPluginSettings, entry: Entry): string => {
-  const folder = getNoteFolder(settings, entry)
+export const getNotePath = (settings: SupernotesPluginSettings, card: SupernotesCard): string => {
+  const folder = getNoteFolder(settings, card)
 
   // TODO: name should be decided based on settings
-  const fileName = `${entry.data.id}.md`
+  const fileName = `${card.data.id}.md`
 
   return `${folder}/${fileName}`
 }

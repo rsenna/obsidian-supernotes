@@ -38,7 +38,7 @@ enum SupernotesViewDisplayType {
   GRAPH = 4
 }
 
-export type Entry = {
+export type SupernotesCard = {
   backlinks: string[],
   data: {
     color: string

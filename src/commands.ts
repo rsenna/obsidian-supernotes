@@ -2,7 +2,7 @@ import {SupernotesPluginSettings, SyncOptions} from "./settings";
 import {createNoteForEntry, getNoteInFolder} from "./note";
 import {App, moment, Notice, requestUrl, RequestUrlParam, RequestUrlResponse, TFile} from "obsidian";
 import {formatDate, getEnumValues, isObject, isValidDateString} from "./utils";
-import {Entry, SupernotesStatus} from "./types";
+import {SupernotesCard, SupernotesStatus} from "./types";
 
 const getRequestUrlParamsBody = (includeJunk: boolean) => {
   const query: string[] = []
@@ -49,13 +49,13 @@ export const downloadAll = async (
     return moment(result).unix()
   }
 
-  const setFrontmatter = (prefix: string, entry: Entry, frontmatter: any) => {
+  const setFrontmatter = (prefix: string, card: SupernotesCard, frontmatter: any) => {
     // Avoiding nested yaml properties because of
     // https://forum.obsidian.md/t/properties-support-multi-level-yaml-nested-attributes/63826
 
-    for (const key in entry) {
+    for (const key in card) {
       // @ts-ignore
-      const item = entry[key]
+      const item = card[key]
       const prefixedKey = prefix + separator + key
 
       if (ignoredKeys.contains(prefixedKey)) {
@@ -85,12 +85,12 @@ export const downloadAll = async (
     console.debug('response.status', response.status)
 
     const responseJson = response.json
-    const responseEntries: Entry[] = Object.values(responseJson)
+    const responseCards: SupernotesCard[] = Object.values(responseJson)
 
-    console.debug('responseEntries.length', responseEntries.length)
-    entryCount = responseEntries.length
+    console.debug('responseCards.length', responseCards.length)
+    entryCount = responseCards.length
 
-    for (const responseEntry of responseEntries) {
+    for (const responseEntry of responseCards) {
       const existingNoteFile = await getNoteInFolder(app, settings, responseEntry)
       const existingUnixTime = await getExistingNoteMtime(existingNoteFile)
       const responseUnixTime = moment(responseEntry.data.modified_when).unix()
