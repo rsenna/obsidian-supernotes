@@ -1,6 +1,6 @@
 import {SupernotesPluginSettings, SyncOptions} from "./settings";
-import {createNoteForEntry, getNoteInFolder} from "./note";
-import {App, moment, Notice, requestUrl, RequestUrlParam, RequestUrlResponse, TFile} from "obsidian";
+import {createNoteForEntry, getAllNotesInFolder, getNoteInFolder} from "./note";
+import {App, moment, normalizePath, Notice, requestUrl, RequestUrlParam, RequestUrlResponse, TFile} from "obsidian";
 import {formatDate, getEnumValues, isObject, isValidDateString} from "./utils";
 import {SupernotesCard, SupernotesStatus} from "./types";
 
@@ -127,7 +127,11 @@ export const uploadAll = async (
   statusBarItem: HTMLElement,
   ignore: number[]
 ) => {
-  // TODO
+  const folderPath = normalizePath(settings.basic.folder)
+  for (const file of getAllNotesInFolder(app, folderPath)) {
+
+  }
+
 }
 
 export const synchronizeAll = async (

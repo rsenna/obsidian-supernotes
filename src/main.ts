@@ -1,4 +1,4 @@
-import {App, Modal, Notice, Plugin} from 'obsidian';
+import {App, Modal, Plugin} from 'obsidian';
 import {DEFAULT_SETTINGS, HasSettings, SupernotesPluginSettings, SupernotesSettingTab} from 'src/settings';
 import * as commands from './commands'
 
@@ -65,4 +65,3 @@ class SampleModal extends Modal {
     contentEl.empty();
   }
 }
-

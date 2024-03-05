@@ -1,11 +1,16 @@
 // From https://github.com/Lisandra-dev/obsidian-create-note-in-folder/blob/master/src/utils/create_note.ts
 
-import {App, getLinkpath, MarkdownView, normalizePath, OpenViewState, TFile, WorkspaceLeaf} from "obsidian";
+import {App, getLinkpath, MarkdownView, normalizePath, OpenViewState, TFile, TFolder, WorkspaceLeaf} from "obsidian";
 import {DefaultOpening, SplitDirection} from "src/interface";
 
 import {SupernotesPluginSettings} from "./settings";
 import {SupernotesCard, SupernotesStatus} from "./types";
 import * as path from "path";
+
+// TODO: segregate functions according to dependencies
+// There are at least 2 groups of functions here
+// - Supernotes related
+// - file/folder manipulation, decoupled from Supernotes' types
 
 export const createNoteForEntry = async (
   app: App,
@@ -58,6 +63,16 @@ const focusInlineTitle = async (leaf: WorkspaceLeaf | undefined) => {
 
   window.getSelection()?.selectAllChildren(titleContainerEl);
   return;
+}
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export const getAllNotesInFolder = (app: App, folderPath: string): TFile[] => {
+  const folder = app.vault.getAbstractFileByPath(folderPath) as TFolder
+  const result = folder.children
+    .filter(it => it instanceof TFile)
+    .map(it => it as TFile)
+
+  return result
 }
 
 const getLeafWithNote = (app: App, file: TFile): undefined | WorkspaceLeaf => {
