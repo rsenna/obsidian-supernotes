@@ -46,22 +46,3 @@ export default class SupernotesPlugin extends Plugin implements HasSettings {
     await this.saveData(this.settings);
   }
 }
-
-class SampleModal extends Modal {
-  text: string;
-
-  constructor(app: App, text: string) {
-    super(app);
-    this.text = text;
-  }
-
-  onOpen() {
-    const {contentEl} = this;
-    contentEl.setText(this.text);
-  }
-
-  onClose() {
-    const {contentEl} = this;
-    contentEl.empty();
-  }
-}
