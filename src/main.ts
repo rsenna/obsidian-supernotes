@@ -35,7 +35,7 @@ export default class SupernotesPlugin extends Plugin implements HasSettings {
   }
 
   onunload() {
-
+    // TODO: delete if unused
   }
 
   async loadSettings(): Promise<SupernotesPluginSettings> {
