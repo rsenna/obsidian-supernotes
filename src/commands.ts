@@ -44,8 +44,19 @@ export const downloadAll = async (
   }
 
   const getExistingNoteMtime = async (file: TFile) => {
-    let result: any
-    await app.fileManager.processFrontMatter(file, f => result = f['updated'])
+    if (!file) {
+      console.warn(`getExistingNoteMtime: Cannot not load "updated" field from a null file".`)
+      return 0
+    }
+
+    let result: any = undefined
+    try {
+      await app.fileManager.processFrontMatter(file, f => result = f['updated'])
+    } catch (ex) {
+      console.error(`getExistingNoteMtime error: ${ex}.`)
+      return 0
+    }
+
     return moment(result).unix()
   }
 
@@ -72,6 +83,24 @@ export const downloadAll = async (
     }
   }
 
+  const shouldDownloadFile = async (responseEntry: SupernotesCard): Promise<[boolean, TFile?]> => {
+    const existingNoteFile = await getNoteInFolder(app, settings, responseEntry)
+
+    if (!existingNoteFile) {
+      return [true, undefined]
+    }
+
+    const existingUnixTime = await getExistingNoteMtime(existingNoteFile)
+    const responseUnixTime = moment(responseEntry.data.modified_when).unix()
+
+    const download =
+      !existingNoteFile ||
+      (settings.syncRules.download === SyncOptions.Always) ||
+      (settings.syncRules.download === SyncOptions.ByTimestamp && responseUnixTime > existingUnixTime)
+
+    return [download, existingNoteFile]
+  }
+
   let entryCount = 0
 
   try {
@@ -91,14 +120,7 @@ export const downloadAll = async (
     entryCount = responseCards.length
 
     for (const responseEntry of responseCards) {
-      const existingNoteFile = await getNoteInFolder(app, settings, responseEntry)
-      const existingUnixTime = await getExistingNoteMtime(existingNoteFile)
-      const responseUnixTime = moment(responseEntry.data.modified_when).unix()
-
-      const download =
-        !existingNoteFile ||
-        (settings.syncRules.download === SyncOptions.Always) ||
-        (settings.syncRules.download === SyncOptions.ByTimestamp && responseUnixTime > existingUnixTime)
+      const [download, existingNoteFile] = await shouldDownloadFile(responseEntry)
 
       if (download) {
         const noteFile = existingNoteFile || await createNoteForEntry(app, settings, responseEntry)
