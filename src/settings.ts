@@ -1,11 +1,16 @@
-import SupernotesPlugin from 'src/main';
+import SupernotesPlugin from 'src/main'
 
-import { PluginSettingTab, App, Setting } from "obsidian";
+import { PluginSettingTab, App, Setting } from "obsidian"
 
 export enum SyncOptions {
   Never = 0,
   ByTimestamp,
   Always
+}
+
+export enum SyncTitleOptions {
+  UseId = 0,
+  UseTitle
 }
 
 export enum DeleteOptions {
@@ -25,6 +30,7 @@ export interface SupernotesPluginSettings {
   },
   syncRules: {
     download: SyncOptions,
+    downloadTitle: SyncTitleOptions,
     upload: SyncOptions,
     delete: DeleteOptions
   }
@@ -41,10 +47,11 @@ export const DEFAULT_SETTINGS: SupernotesPluginSettings = {
   },
   syncRules: {
     download: SyncOptions.ByTimestamp,
+    downloadTitle: SyncTitleOptions.UseId,
     upload: SyncOptions.ByTimestamp,
     delete: DeleteOptions.Never
   }
-};
+}
 
 export interface HasSettings {
   loadSettings(): Promise<SupernotesPluginSettings>
@@ -69,6 +76,11 @@ export class SupernotesSettingTab extends PluginSettingTab {
       [SyncOptions.Always]: 'Always'
     } as Record<string, string>
 
+    const syncTitleDropdownOptions = {
+      [SyncTitleOptions.UseId]: 'Use (internal) Supernotes note id',
+      [SyncTitleOptions.UseTitle]: "Use Supernotes note title (when set)"
+    }
+
     const deleteDropdownOptions = {
       [DeleteOptions.Never]: 'Never',
       [DeleteOptions.Remote]: 'Remotely, after download',
@@ -76,7 +88,7 @@ export class SupernotesSettingTab extends PluginSettingTab {
     }
 
     const createHeader = (text: string, desc?: string) => {
-      const header = this.containerEl.createDiv({ cls: 'setting-item setting-item-heading' });
+      const header = this.containerEl.createDiv({ cls: 'setting-item setting-item-heading' })
       header.createDiv({ text, cls: 'setting-item-name' })
       header.ariaLabel = desc  ?? null
     }
@@ -84,7 +96,7 @@ export class SupernotesSettingTab extends PluginSettingTab {
     const setJunkFolderVisible = (value: boolean) =>
       containerEl.find('.txt-junk-folder').toggleClass('invisible', !value)
 
-    createHeader('Basic', 'Required information when connecting with Supernotes')
+    createHeader('Supernotes', 'Required information when connecting with Supernotes')
 
     new Setting(containerEl)
       .setName('Supernotes API Key')
@@ -94,9 +106,10 @@ export class SupernotesSettingTab extends PluginSettingTab {
         .setPlaceholder('Enter your API Key')
         .setValue(this.plugin.settings.basic.apiKey)
         .onChange(async (value) => {
-          this.plugin.settings.basic.apiKey = value;
-          await this.plugin.saveSettings();
-        }))
+          this.plugin.settings.basic.apiKey = value
+          await this.plugin.saveSettings()
+        })
+      )
 
     new Setting(containerEl)
       .setName('Supernotes Folder')
@@ -105,9 +118,10 @@ export class SupernotesSettingTab extends PluginSettingTab {
         .setPlaceholder('Enter Supernotes folder path')
         .setValue(this.plugin.settings.basic.folder)
         .onChange(async (value) => {
-          this.plugin.settings.basic.folder = value;
-          await this.plugin.saveSettings();
-        }))
+          this.plugin.settings.basic.folder = value
+          await this.plugin.saveSettings()
+        })
+      )
 
     createHeader('Junk', 'What to do with "junk" (i.e. logically deleted) Supernotes entries')
 
@@ -130,9 +144,10 @@ export class SupernotesSettingTab extends PluginSettingTab {
       .addText(it => it
         .setPlaceholder('Enter Supernotes Junk folder path')
         .setValue(this.plugin.settings.junk.folder)
-        .onChange(async (value: string): Promise<string> =>
+        .onChange(async (value: string): Promise<void> => {
           this.plugin.settings.junk.folder = value
-        )
+          await this.plugin.saveSettings()
+        })
       )
 
     setJunkFolderVisible(this.plugin.settings.junk.enabled)
@@ -144,7 +159,24 @@ export class SupernotesSettingTab extends PluginSettingTab {
       .setDesc('If notes should be downloaded from Supernotes')
       .addDropdown(it => it
         .addOptions(syncDropdownOptions)
-        .setValue(this.plugin.settings.syncRules.download.toString())
+        .setValue(this.plugin.settings.syncRules.download?.toString())
+        .onChange(async (value: string): Promise<void> => {
+          this.plugin.settings.syncRules.download = +value
+          await this.plugin.saveSettings()
+        })
+      )
+
+    new Setting(containerEl)
+      .setName('Download title behaviour')
+      .setDesc('Which title should be used for notes downloaded from Supernotes')
+      .setTooltip('Supernotes id will ALWAYS be used for notes without title', { placement: 'right', delay: 0 })
+      .addDropdown(it => it
+        .addOptions(syncTitleDropdownOptions)
+        .setValue(this.plugin.settings.syncRules.downloadTitle?.toString())
+        .onChange(async (value: string): Promise<void> => {
+          this.plugin.settings.syncRules.downloadTitle = +value
+          await this.plugin.saveSettings()
+        })
       )
 
     new Setting(containerEl)
@@ -152,7 +184,11 @@ export class SupernotesSettingTab extends PluginSettingTab {
       .setDesc('If notes should be uploaded to Supernotes')
       .addDropdown(it => it
         .addOptions(syncDropdownOptions)
-        .setValue(this.plugin.settings.syncRules.upload.toString())
+        .setValue(this.plugin.settings.syncRules.upload?.toString())
+        .onChange(async (value: string): Promise<void> => {
+          this.plugin.settings.syncRules.upload = +value
+          await this.plugin.saveSettings()
+        })
       )
 
     new Setting(containerEl)
@@ -160,7 +196,15 @@ export class SupernotesSettingTab extends PluginSettingTab {
       .setDesc('If notes should be deleted locally or remotely, and when')
       .addDropdown(it => it
         .addOptions(deleteDropdownOptions)
-        .setValue(this.plugin.settings.syncRules.delete.toString())
+        .setValue(this.plugin.settings.syncRules.delete?.toString())
+        .onChange(async (value: string): Promise<void> => {
+          this.plugin.settings.syncRules.delete = +value
+          await this.plugin.saveSettings()
+        })
       )
+  }
+
+  async hide(): Promise<void> {
+    await this.plugin.saveSettings()
   }
 }

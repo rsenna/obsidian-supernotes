@@ -139,7 +139,7 @@ export const downloadAll = async (
     console.error('ERROR ' + ex)
     new Notice(ex)
   } finally {
-    statusBarEl.setText(`Download complete (total = ${entryCount}).`)
+    statusBarEl.setText(`Download complete (total = ${entryCount} notes downloaded).`)
   }
 }
 
@@ -151,9 +151,8 @@ export const uploadAll = async (
 ) => {
   const folderPath = normalizePath(settings.basic.folder)
   for (const file of getAllNotesInFolder(app, folderPath)) {
-
+    // TODO
   }
-
 }
 
 export const synchronizeAll = async (

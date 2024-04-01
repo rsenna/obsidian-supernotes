@@ -3,7 +3,7 @@
 import {App, getLinkpath, MarkdownView, normalizePath, OpenViewState, TFile, TFolder, WorkspaceLeaf} from "obsidian";
 import {DefaultOpening, SplitDirection} from "src/interface";
 
-import {SupernotesPluginSettings} from "./settings";
+import {SupernotesPluginSettings, SyncTitleOptions} from "./settings";
 import {SupernotesCard, SupernotesStatus} from "./types";
 import * as path from "path";
 
@@ -24,7 +24,7 @@ export const createNoteForEntry = async (
   // Create folder if it doesn't exist:
   if (!app.vault.getAbstractFileByPath(folder)) {
     await app.vault.createFolder(folder)
-    console.debug(`created folder: ${folder}.`)
+    console.debug(`Created folder: ${folder}.`)
   }
 
   const file = app.vault.getAbstractFileByPath(createdFilePath) as TFile
@@ -135,8 +135,9 @@ export async function getNoteInFolder(app: App, settings: SupernotesPluginSettin
 export const getNotePath = (settings: SupernotesPluginSettings, card: SupernotesCard): string => {
   const folder = getNoteFolder(settings, card)
 
-  // TODO: name should be decided based on settings
-  const fileName = `${card.data.id}.md`
+  const fileName = settings.syncRules.downloadTitle == SyncTitleOptions.UseId
+    ? `${card.data.id}.md`
+    : `${card.data.name || card.data.id}.md`
 
   return `${folder}/${fileName}`
 }
